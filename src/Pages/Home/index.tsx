@@ -1,74 +1,142 @@
-import { Play } from 'phosphor-react'
-import { useForm } from 'react-hook-form'
-
+import { HandPalm, Play } from 'phosphor-react'
+import { createContext, useState } from 'react'
 import {
-  CountdownContainer,
-  FormContainer,
   HomeContainer,
-  Separator,
-  StartCountdownButton,
-  TaskInput,
-  MinutesAmountInput,
+  StartCountDownButton,
+  StopCountDownButton,
 } from './styles'
+import { NewCycleForm } from './Components/NewCycleForm'
+import { Countdown } from './Components/Countdown'
+import { zodResolver } from '@hookform/resolvers/zod'
+import * as zod from 'zod'
+import { FormProvider, useForm } from 'react-hook-form'
+
+interface Cycle {
+  id: string
+  task: string
+  minutesAmount: number
+  startDate: Date
+  interruptedDate?: Date
+  finishedDate?: Date
+}
+
+interface CyclesContextType {
+  activeCycle: Cycle | undefined
+  activeCycleId: string | null
+  amountSecondsPassed: number
+  markCurrentCycleAsFinished: () => void
+  setSecondsPassed: (seconds: number) => void
+}
+
+export const CyclesContext = createContext({} as CyclesContextType)
+
+const newCycleFormValidationSchema = zod.object({
+  task: zod.string().min(1, 'Informe a tarefa'),
+  minutesAmount: zod
+    .number()
+    .min(5, 'O ciclo precisa ser de no mínimo 5 minutos.')
+    .max(60, 'O ciclo precisa ser de no máximo 60 minutos.'),
+})
+
+type NewCycleFormData = zod.infer<typeof newCycleFormValidationSchema>
 
 export function Home() {
-  const { register, handleSubmit, watch } = useForm()
+  const [cycles, setCycles] = useState<Cycle[]>([])
+  const [activeCycleId, setActiveCycleId] = useState<string | null>(null)
+  const activeCycle = cycles.find((cycle) => cycle.id === activeCycleId)
+  const [amountSecondsPassed, setAmountSecondsPassed] = useState(0)
 
-  function handleCreateNewCycle(data: unknown) {
+  const newCycleForm = useForm<NewCycleFormData>({
+    resolver: zodResolver(newCycleFormValidationSchema),
+    defaultValues: {
+      task: '',
+      minutesAmount: 0,
+    },
+  })
+
+  const { handleSubmit, watch, reset } = newCycleForm
+
+  function setSecondsPassed(seconds: number) {
+    setAmountSecondsPassed(seconds)
+  }
+
+  function handleCreateNewCycle(data: NewCycleFormData) {
     console.log(data)
+
+    const id = String(new Date().getTime())
+
+    const newCycle: Cycle = {
+      id,
+      task: data.task,
+      minutesAmount: data.minutesAmount,
+      startDate: new Date(),
+    }
+    setCycles((state) => [...state, newCycle])
+    setActiveCycleId(id)
+    setAmountSecondsPassed(0)
+    reset()
+  }
+
+  function markCurrentCycleAsFinished() {
+    setCycles((state) =>
+      state.map((cycle) => {
+        if (cycle.id === activeCycleId) {
+          return { ...cycle, finishedDate: new Date() }
+        } else {
+          return cycle
+        }
+      }),
+    )
+  }
+
+  function handleInterruptCycle() {
+    setCycles((state) =>
+      state.map((cycle) => {
+        if (cycle.id === activeCycleId) {
+          return { ...cycle, interruptedDate: new Date() }
+        } else {
+          return cycle
+        }
+      }),
+    )
+    setActiveCycleId(null)
   }
 
   const task = watch('task')
   const isSubmitDisable = !task
 
   return (
-    <HomeContainer>
-      <form onSubmit={handleSubmit(handleCreateNewCycle)}>
-        <FormContainer>
-          <label htmlFor="task">Vou trabalhar em</label>
-          <TaskInput
-            id="task"
-            list="task-suggestions"
-            placeholder="Give your project a name"
-            {...register('task')}
-          />
+    <CyclesContext.Provider
+      value={{
+        activeCycleId,
+        activeCycle,
+        markCurrentCycleAsFinished,
+        amountSecondsPassed,
+        setSecondsPassed,
+      }}
+    >
+      <HomeContainer>
+        <form onSubmit={handleSubmit(handleCreateNewCycle)}>
+          <FormProvider {...newCycleForm}>
+            <NewCycleForm />
+          </FormProvider>
+          <Countdown />
 
-          <datalist id="task-suggestions">
-            <option value="project 1" />
-            <option value="project 2" />
-            <option value="project 3" />
-            <option value="project 4" />
-            <option value="project 5" />
-          </datalist>
-
-          <label htmlFor="minutesAmount">during</label>
-          <MinutesAmountInput
-            type="number"
-            id="minutesAmount"
-            placeholder="00"
-            step={5}
-            min={5}
-            max={60}
-            {...register('minutesAmount', { valueAsNumber: true })}
-          />
-
-          <span>minutes.</span>
-        </FormContainer>
-
-        <CountdownContainer>
-          <span>0</span>
-          <span>0</span>
-          <Separator>:</Separator>
-          <span>0</span>
-          <span>0</span>
-        </CountdownContainer>
-
-        <StartCountdownButton disabled={isSubmitDisable} type="submit">
-          {' '}
-          <Play size={24} />
-          Start
-        </StartCountdownButton>
-      </form>
-    </HomeContainer>
+          {activeCycle ? (
+            <StopCountDownButton onClick={handleInterruptCycle} type="button">
+              {' '}
+              <HandPalm size={24} />
+              Stop
+            </StopCountDownButton>
+          ) : (
+            <StartCountDownButton disabled={isSubmitDisable} type="submit">
+              {' '}
+              <Play size={24} />
+              Start
+            </StartCountDownButton>
+          )}
+        </form>
+      </HomeContainer>
+    </CyclesContext.Provider>
   )
 }
