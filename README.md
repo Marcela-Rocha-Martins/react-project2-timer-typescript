@@ -15,7 +15,6 @@ Welcome to the React TypeScript Vite Timer App! This project provides a simple i
 
 ### Dependencies
 
-- **@hookform/resolvers**: Form validation resolvers for seamless user input handling.
 - **date-fns**: Date utility functions for efficient date manipulations.
 - **immer**: Facilitates immutable state updates with ease.
 - **phosphor-react**: Icon library to enhance visual appeal.
