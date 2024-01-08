@@ -31,5 +31,5 @@ To run the project locally, follow these steps:
 
 ## Deploy
 
-This project its available on: https://react-project1-feed-typescript.vercel.app/
+This project its available on: https://react-project2-timer-typescript-d3hwae8eo.vercel.app
 
